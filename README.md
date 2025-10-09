@@ -1,6 +1,14 @@
 # OCI AI Proxy - Oracle Cloud AI 代理服务
 
-一个高性能、兼容 OpenAI API 格式的 Oracle Cloud Infrastructure (OCI) AI 代理服务，支持**多账户分流**、**多模型配置**和**流式响应**。
+一个高性能、兼容 OpenAI API 格式的 Oracle Cloud Infrastructure (OCI) AI 代理服务，支持**智能模型管理**、**多账户分流**、**多模型配置**和**流式响应**。
+
+## 🌟 新特性亮点
+
+### 🚀 智能模型管理
+- **零配置**：自动从OCI API发现所有可用模型
+- **智能合并**：保留自定义配置，自动添加新模型
+- **实时刷新**：调用API时自动更新模型列表
+- **多账户聚合**：从所有账户聚合模型，自动去重
 
 ## 🚀 功能概述
 
@@ -16,16 +24,29 @@
 
 ## ✨ 核心功能
 
-### 1. **多模型支持**
-在配置文件中定义多个模型映射，支持不同的 AI 工具使用不同的模型：
+### 1. **智能模型管理**
+系统自动从OCI API获取所有可用模型，无需手动配置：
 
+**🔄 自动发现**：
+- 启动时自动从OCI API获取所有可用模型
+- 生成友好的模型名称映射（如 `grok-4 = xai.grok-4`）
+- 多账户模式下从所有账户聚合模型列表
+
+**🧠 智能合并**：
+- 保留手动配置的自定义模型映射
+- 自动添加新发现的模型，避免重复
+- 实时刷新：调用 `/v1/models` 时自动更新模型列表
+
+**📋 示例自动生成的映射**：
 ```ini
 [MODELS]
+# 自动生成的友好映射
 grok-4 = xai.grok-4
 grok-3 = xai.grok-3
-grok-3-mini = xai.grok-3-mini
-grok-3-fast = xai.grok-3-fast
-grok-3-mini-fast = xai.grok-3-mini-fast
+command-r-plus = cohere.command-r-plus
+llama-3-70b = meta.llama-3-70b-instruct
+# 您的自定义映射会被保留
+my-custom-model = xai.grok-4
 ```
 
 ### 2. **防截断优化**
@@ -77,7 +98,6 @@ ociai-proxy -multi-account -config multi_config.conf -port 8080
 ### 单账户配置示例 (`config.conf`)
 
 ```ini
-[DEFAULT]
 # OCI 身份验证配置
 user = ocid1.user.oc1..your_user_ocid
 fingerprint = your_key_fingerprint  
@@ -91,16 +111,18 @@ force_non_stream = false      # 强制非流式响应
 default_max_tokens = 4000     # 默认最大token数，防止截断
 
 [MODELS]
-# 多模型映射配置 - 客户端模型名 = OCI模型ID
-grok-4 = xai.grok-4
-grok-3 = xai.grok-3  
-grok-3-mini = xai.grok-3-mini
-grok-3-fast = xai.grok-3-fast
-grok-3-mini-fast = xai.grok-3-mini-fast
+# 🚀 智能模型管理：系统会自动从OCI API获取所有可用模型
+# 您可以添加自定义映射，系统会保留这些配置并添加新发现的模型
 
-# 可以添加更多模型映射，例如：
-# gpt-4 = xai.grok-4
-# claude-3-opus = meta.llama-3-70b-instruct
+# 示例自定义映射（可选）：
+# my-preferred-model = xai.grok-4
+# gpt-4-alias = cohere.command-r-plus
+
+# 系统启动后会自动添加类似以下映射：
+# grok-4 = xai.grok-4
+# grok-3 = xai.grok-3
+# command-r-plus = cohere.command-r-plus
+# llama-3-70b = meta.llama-3-70b-instruct
 ```
 
 ### 多账户配置示例 (`multi_config.conf`)
@@ -123,12 +145,17 @@ force_non_stream = false
 default_max_tokens = 4000
 
 [MODELS]
-# 模型映射（所有账户共享）
-grok-4 = xai.grok-4
-grok-3 = xai.grok-3
-grok-3-mini = xai.grok-3-mini
-grok-3-fast = xai.grok-3-fast
-grok-3-mini-fast = xai.grok-3-mini-fast
+# 🚀 智能模型管理：系统会自动从所有账户的OCI API聚合可用模型
+# 自动去重并生成友好的模型名称映射，您的自定义映射会被保留
+
+# 示例自定义映射（可选）：
+# my-preferred-model = xai.grok-4
+# team-model = cohere.command-r-plus
+
+# 系统启动后会自动从所有账户聚合并添加类似以下映射：
+# grok-4 = xai.grok-4
+# command-r-plus = cohere.command-r-plus
+# llama-3-70b = meta.llama-3-70b-instruct
 
 # 账户配置 - 每个账户一个section
 [ACCOUNT_1]
@@ -238,7 +265,7 @@ ociai-proxy -multi-account -config multi_config.conf -port 8080
 ### Cherry Studio
 - **Base URL**: `http://localhost:8080/v1`
 - **API Key**: `fbbec720bfe103b5168299a875995efa` (配置文件中的密钥)
-- **Model**: `grok-4` 或其他配置的模型
+- **Model**: `grok-4` 或其他自动发现的模型
 
 ### Cline (VS Code Extension)
 ```json
@@ -253,7 +280,7 @@ ociai-proxy -multi-account -config multi_config.conf -port 8080
 任何支持 OpenAI API 的客户端都可以使用，只需设置：
 - **Base URL**: `http://localhost:8080/v1`
 - **API Key**: 配置文件中生成的密钥
-- **Model**: 任意 `[MODELS]` 部分配置的模型名
+- **Model**: 任意自动发现或手动配置的模型名
 
 ## 🛠️ API 端点
 
@@ -261,9 +288,10 @@ ociai-proxy -multi-account -config multi_config.conf -port 8080
 | 端点 | 方法 | 描述 |
 |------|------|------|
 | `/v1/chat/completions` | POST | OpenAI 兼容的聊天完成接口 |
-| `/v1/models` | GET | 获取可用模型列表 |
+| `/v1/models` | GET | 获取可用模型列表（自动刷新并合并） |
 | `/health` | GET | 健康检查 |
 | `/test-oci` | GET | 测试 OCI 连接 |
+| `/admin/models/refresh` | POST | 手动刷新模型列表（需要API key） |
 
 ### 多账户模式监控端点
 | 端点 | 方法 | 描述 |
@@ -287,13 +315,20 @@ curl http://localhost:8080/stats/circuit-breaker
 
 # 重置熔断器
 curl -X POST http://localhost:8080/admin/circuit-breaker/reset
+
+# 手动刷新模型列表
+curl -X POST -H "Authorization: Bearer your_api_key" http://localhost:8080/admin/models/refresh
+
+# 查看当前可用模型（自动刷新）
+curl http://localhost:8080/v1/models
 ```
 
 ## 📊 特性对比
 
 | 特性 | 单账户模式 | 多账户模式 | 描述 |
 |------|-----------|-----------|------|
-| 多模型支持 | ✅ | ✅ | 配置多个 OCI 模型映射 |
+| **🚀 智能模型管理** | ✅ | ✅ | 自动从OCI API获取并智能合并模型 |
+| 多模型支持 | ✅ | ✅ | 友好的模型名称映射 |
 | 流式响应 | ✅ | ✅ | 支持 SSE 流式输出 |
 | 防截断优化 | ✅ | ✅ | 4000 tokens 默认限制 |
 | 区域自动选择 | ✅ | ✅ | 8个 OCI 区域支持 |
@@ -301,6 +336,7 @@ curl -X POST http://localhost:8080/admin/circuit-breaker/reset
 | 身份验证 | ✅ | ✅ | Bearer Token 认证 |
 | CORS 支持 | ✅ | ✅ | 跨域请求支持 |
 | **多账户分流** | ❌ | ✅ | 多OCI账户统一管理 |
+| **模型聚合** | ❌ | ✅ | 从所有账户聚合模型列表 |
 | **负载均衡** | ❌ | ✅ | 轮询、权重、最少连接策略 |
 | **自动故障转移** | ❌ | ✅ | 账户故障自动切换 |
 | **熔断器保护** | ❌ | ✅ | 账户级故障保护 |
@@ -429,6 +465,12 @@ curl http://localhost:8080/stats/circuit-breaker
 - **OpenAI API兼容**: 无需修改客户端代码
 - **向后兼容**: 完全兼容单账户模式
 - **多客户端支持**: 支持各种AI工具和应用
+
+### 智能管理优势
+- **零配置启动**: 无需手动配置模型列表
+- **自动发现**: 实时发现新增的OCI模型
+- **智能命名**: 自动生成友好的模型名称
+- **配置保护**: 保留用户自定义的模型映射
 
 ---
 
