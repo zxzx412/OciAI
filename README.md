@@ -54,6 +54,10 @@ meta.llama-3-70b-instruct → llama-3-70b-instruct
 
 支持配置多个代理服务器，用于绕过 IP 封锁或提高访问稳定性：
 
+**两种模式**：
+- **远程模式**（推荐）：使用独立的 proxy-pool 服务，支持定时刷新和统计
+- **本地模式**：内置代理池，支持自动获取免费代理
+
 **支持的代理类型**：
 - HTTP/HTTPS 代理
 - SOCKS5 代理
@@ -64,6 +68,9 @@ meta.llama-3-70b-instruct → llama-3-70b-instruct
 - `weighted` - 加权
 - `random` - 随机
 - `least_connections` - 最少连接
+
+**内置代理源**（本地模式）：
+- GitHub 代理列表 (TheSpeedX, monosans, hookzof, clarketm)
 
 ### 3. 防截断优化
 - 默认 `max_tokens = 4000`，避免代码生成截断
@@ -127,9 +134,13 @@ api_key =
 # 代理池配置 (可选)
 [PROXY_POOL]
 enabled = false
+# 远程代理池 (推荐，需先启动 proxy-pool 服务)
+# remote_pool_url = http://127.0.0.1:8888
+# 本地模式配置
 health_check_interval = 60s
-health_check_url = https://www.google.com
 load_balance_strategy = round_robin
+# 自动获取免费代理 (本地模式)
+auto_fetch = false
 
 # 代理服务器配置示例 (启用代理池后生效)
 # [PROXY_1]
@@ -179,8 +190,10 @@ default_max_tokens = 4000
 # 代理池配置 (可选)
 [PROXY_POOL]
 enabled = false
+# 远程代理池 (推荐，需先启动 proxy-pool 服务)
+# remote_pool_url = http://127.0.0.1:8888
+# 本地模式配置
 health_check_interval = 60s
-health_check_url = https://www.google.com
 load_balance_strategy = round_robin
 
 # [PROXY_1]
@@ -251,9 +264,18 @@ enabled = false
 | 配置项 | 说明 |
 |--------|------|
 | `enabled` | 是否启用代理池 |
+| `remote_pool_url` | 远程代理池服务地址（推荐） |
 | `health_check_interval` | 健康检查间隔 |
-| `health_check_url` | 健康检查 URL |
 | `load_balance_strategy` | 负载均衡策略 |
+| `auto_fetch` | 是否自动获取免费代理（本地模式） |
+
+#### 时间格式说明
+配置中的时间值使用 Go 标准格式：
+- `s` - 秒，如 `30s`
+- `m` - 分钟，如 `30m`
+- `h` - 小时，如 `1h`, `24h`
+- 可组合，如 `1h30m`
+- 注意：不支持 `d`（天），一天请写成 `24h`
 
 #### 代理服务器配置
 | 配置项 | 说明 |
