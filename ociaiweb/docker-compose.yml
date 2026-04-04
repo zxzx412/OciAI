@@ -1,0 +1,77 @@
+# ============================================================
+# OciAI - Docker Compose 配置文件
+# ============================================================
+
+# 加载环境变量
+x-env: &env-file
+  env_file:
+    - .env
+
+services:
+  # ============================================================
+  # PostgreSQL 数据库服务
+  # ============================================================
+  postgres:
+    <<: *env-file
+    image: postgres:16-alpine
+    container_name: ociai-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-ociai}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-ociai_secret_2024}
+      POSTGRES_DB: ${DB_NAME:-ociai}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-ociai} -d ${DB_NAME:-ociai}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ociai-network
+
+  # ============================================================
+  # OciAI 主服务（从 Docker Hub 拉取预构建镜像）
+  # ============================================================
+  ociai:
+    <<: *env-file
+    image: zxzx412/ociai:latest
+    container_name: ociai-server
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # 数据库配置
+      DB_HOST: postgres
+      DB_PORT: ${DB_PORT:-5432}
+      DB_USER: ${DB_USER:-ociai}
+      DB_PASSWORD: ${DB_PASSWORD:-ociai_secret_2024}
+      DB_NAME: ${DB_NAME:-ociai}
+      DB_SSL_MODE: disable
+      # 服务配置
+      TZ: Asia/Shanghai
+    volumes:
+      - ./config.ini:/app/config.ini
+      - ./keys:/app/keys
+      - ./logs:/app/logs
+    ports:
+      - "${SERVER_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - ociai-network
+
+networks:
+  ociai-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
